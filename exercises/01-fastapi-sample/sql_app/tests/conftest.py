@@ -24,7 +24,7 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
-client = TestClient(app)
+#client = TestClient(app)
 
 
 @pytest.fixture()
@@ -38,3 +38,20 @@ def test_db():
 def client():
     client = TestClient(app)
     return client
+
+
+@pytest.fixture
+def user(client):
+    # ユーザ作成
+    response = client.post(
+        "/users/",
+        json={"email": "deadpool@example.com", "password": "chimichangas4life"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    return {
+        "user_id": data["id"],
+        "api_token": data["api_token"],
+        "email": data["email"],
+    }

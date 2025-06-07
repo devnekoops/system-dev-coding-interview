@@ -8,9 +8,67 @@ def test_create_user(test_db, client):
     assert data["email"] == "deadpool@example.com"
     assert "id" in data
     user_id = data["id"]
+    api_token = data["api_token"]
 
-    response = client.get(f"/users/{user_id}")
+    response = client.get(f"/users/{user_id}", headers={"X-API-TOKEN": api_token})
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["email"] == "deadpool@example.com"
     assert data["id"] == user_id
+
+def test_deplicate_create_user(test_db, client):
+    _response = client.post(
+        "/users/",
+        json={"email": "deadpool@example.com", "password": "chimichangas4life"},
+    )
+    response = client.post(
+        "/users/",
+        json={"email": "deadpool@example.com", "password": "chimichangas4life"},
+    )
+    assert response.status_code == 400, response.text
+
+def test_get_users_valid(test_db, client, user):
+    api_token=user["api_token"]
+    response = client.get(f"/users/", headers={"X-API-TOKEN": api_token})
+    assert response.status_code == 200, response.text
+
+# 認証の異常系はここでテストする
+def test_get_users_wrong_token(test_db, client, user):
+    response = client.get(f"/users/", headers={"X-API-TOKEN": "wrong token"})
+    assert response.status_code == 401, response.text
+
+# 認証の異常系はここでテストする
+def test_get_users_missing_token(test_db, client):
+    response = client.get(f"/users/")
+    assert response.status_code == 401, response.text
+
+
+def test_get_users_by_id(test_db, client, user):
+    user_id = user["user_id"]
+    api_token = user["api_token"]
+    response = client.get(f"/users/{user_id}/", headers={"X-API-TOKEN": api_token})
+    assert response.status_code == 200, response.text
+
+
+def test_user_items(test_db, client, user):
+    user_id = user["user_id"]
+    api_token = user["api_token"]
+    response = client.post(f"/users/{user_id}/items/", headers={"X-API-TOKEN": api_token}, json={"title": "test","description": "description"})
+    assert response.status_code == 200, response.text
+
+    response = client.get(f"/items/", headers={"X-API-TOKEN": api_token})
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"]=="test"
+    assert data[0]["description"]=="description"
+    assert data[0]["id"]==1
+    assert data[0]["owner_id"]==1
+
+def test_health_check(test_db, client, user):
+    user_id = user["user_id"]
+    api_token = user["api_token"]
+    response = client.get(f"/health-check/")
+    assert response.status_code == 200, response.text
+
+    data = response.json()
+    assert data["status"] == "ok"

@@ -26,12 +26,22 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    email: str
 
 
 class User(UserBase):
     id: int
     is_active: bool
     items: List[Item] = []
+
+    class Config:
+        orm_mode = True
+
+class UserWithToken(UserBase):
+    id: int
+    is_active: bool
+    items: List[Item] = []
+    api_token: str
 
     class Config:
         orm_mode = True
