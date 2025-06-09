@@ -44,6 +44,6 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
 
 def delete_user_with_transfer(db: Session, source_user_id: int, target_user_id: int):
     db.query(models.User).filter(models.User.id == source_user_id).update({models.User.is_active: False}, synchronize_session="fetch")
-    items = db.query(models.Item).filter(models.Item.owner_id == source_user_id).update({models.Item.owner_id: target_user_id}, synchronize_session="fetch")
+    item_count = db.query(models.Item).filter(models.Item.owner_id == source_user_id).update({models.Item.owner_id: target_user_id}, synchronize_session="fetch")
     db.commit()
-    return items
+    return item_count

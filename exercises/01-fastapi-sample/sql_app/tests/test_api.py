@@ -92,6 +92,40 @@ def test_my_items(test_db, client, user):
     data = response.json()
     assert len(data)  == 0
 
+def test_delete_user(test_db, client, user):
+    user_id1 = user["user_id"]
+    api_token1 = user["api_token"]
+    response = client.post(f"/users/{user_id1}/items/", headers={"X-API-TOKEN": api_token1}, json={"title": "user1-item","description": "user1-description"})
+
+    response = client.post(
+        "/users/",
+        json={"email": "deadpool2@example.com", "password": "chimichangas4life"},
+    )
+    user_data2 = response.json()
+    user_id2 = user_data2["id"]
+    api_token2 = user_data2["api_token"]
+    response = client.post(f"/users/{user_id2}/items/", headers={"X-API-TOKEN": api_token2}, json={"title": "user2-item","description": "user2-description"})
+
+    # user1は消せない
+    response = client.delete(f"/users/{user_id1}/", headers={"X-API-TOKEN": api_token2})
+    assert response.status_code == 403
+    
+    # 存在しないユーザは消せない
+    user_id99999 = 99999 # 存在しないユーザ
+    response = client.delete(f"/users/{user_id99999}/", headers={"X-API-TOKEN": api_token2})
+    assert response.status_code == 404
+
+    # user2を消すとItemがuser1に移動する
+    response = client.delete(f"/users/{user_id2}/", headers={"X-API-TOKEN": api_token2})
+    assert response.status_code == 200
+
+    response = client.get(f"/users/{user_id2}/", headers={"X-API-TOKEN": api_token2})
+    user_data2_delete = response.json()
+    assert user_data2_delete["is_active"] == False, response.text
+
+    response = client.get(f"/users/{user_id1}/", headers={"X-API-TOKEN": api_token2})
+    user_data1_delete = response.json()
+    assert len(user_data1_delete["items"]) == 2, response.text
 
 def test_health_check(test_db, client, user):
     user_id = user["user_id"]
