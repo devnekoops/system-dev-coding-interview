@@ -61,6 +61,24 @@ def read_user(user_id: int, db: Session = db_session, _request_user = request_us
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int, db: Session = db_session, _request_user = request_user):
+    # ユーザが有効化どうか確認
+    delete_user = crud.get_user(db, user_id)
+    if delete_user is None:
+        raise HTTPException(status_code=404, detail=f"user_id={user_id} not found")
+
+    if not delete_user.is_active:
+        raise HTTPException(status_code=409, detail=f"user_id={user_id} is already deactivated")
+    
+    # Itemを移すユーザがいるか確認
+    transfer_user = crud.get_minimum_id_user(db, user_id=user_id)
+    if transfer_user is None:
+        raise HTTPException(status_code=403, detail="No eligible user found to transfer item ownership")
+    
+    item_count = crud.delete_user_with_transfer(db, user_id, transfer_user.id)
+    return {"status": f"{item_count} items were transferred to user_id={transfer_user.id}"}
+
 
 @app.post("/users/{user_id}/items/", response_model=schemas.Item)
 def create_item_for_user(
@@ -75,3 +93,8 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = db_session, _reque
     return items
 
 
+@app.get("/me/items/", response_model=List[schemas.Item])
+def read_my_items(skip: int = 0, limit: int = 100, db: Session = db_session, request_user = request_user):
+    request_user_id = request_user.id
+    users = crud.get_items_by_user_id(db, request_user_id, skip=skip, limit=limit)
+    return users

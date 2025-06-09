@@ -64,10 +64,39 @@ def test_user_items(test_db, client, user):
     assert data[0]["id"]==1
     assert data[0]["owner_id"]==1
 
+def test_my_items(test_db, client, user):
+    user_id = user["user_id"]
+    api_token = user["api_token"]
+
+    # 自分で作ったItemが自分から見えるかテスト
+    response = client.post(f"/users/{user_id}/items/", headers={"X-API-TOKEN": api_token}, json={"title": "test","description": "description"})
+    assert response.status_code == 200, response.text
+
+    response = client.get(f"/me/items/", headers={"X-API-TOKEN": api_token})
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"]=="test"
+    assert data[0]["description"]=="description"
+    assert data[0]["id"]==1
+    assert data[0]["owner_id"]==1
+
+    # 他のユーザからは見えないことをテスト
+    response = client.post(
+        "/users/",
+        json={"email": "another@example.com", "password": "chimichangas4life"},
+    )
+    assert response.status_code == 200
+    user_data = response.json()
+    another_api_token = user_data["api_token"]
+    response = client.get(f"/me/items/", headers={"X-API-TOKEN": another_api_token})
+    data = response.json()
+    assert len(data)  == 0
+
+
 def test_health_check(test_db, client, user):
     user_id = user["user_id"]
     api_token = user["api_token"]
-    response = client.get(f"/health-check/")
+    response = client.get(f"/health-check/", headers={"X-API-TOKEN": api_token})
     assert response.status_code == 200, response.text
 
     data = response.json()
